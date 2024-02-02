@@ -1,0 +1,31 @@
+REMEDID: Retrospective Methodology to Estimate Daily Infections from Deaths 
+
+El algoritmo REMEDID permite reconstruir las infecciones diarias de COVID-19 (o cualquier enfermedad infecciosa) a partir de:
+(1) Las muertes diarias por dicha enfermedad
+(2) Las funciones de densidad de probabilidad (PDF, por las siglas en inglés de Probability Density Function) discretizadas en días del periodo de incubación (IP, por sus siglas en inglés por Incubation Period) y del periodo desde aparición de síntomas hasta la defunción (IOD, por sus siglas en inglés por Illness onset to death)
+(3) Porcentaje de letalidad (CFR, por sus siglas en inglés por Case Fatality Ratio)
+
+Para calcular las infecciones con REMEDID para una PDF de IP y otra de IOD se debe usar el fichero de Matlab: remedid.m
+
+Si los coeficientes que definen a las PDF vienen dados por unos intervalos de confianza (que aquí se asume con distribución uniforme), se pueden calcular las infecciones REMEDID con los errores asociados!
+. Para ello se realiza una simulación de Monte Carlo con el fichero de Matlab: remedid_monte_carlo_error.m. Este fichero usa dos fichero auxiliares: remedid_pdf.m y pdf_infection2death_monte_carlo.m
+
+
+
+Chile y Santiago de Chile Región Metropolitana (CRM):
+Los datos de COVID de Chile y Santiago de Chile Región Metropolitana utilizados y calculados en Márquez et al. (2024) se encuentran en los ficheros Excel:
+- Datos_COVID_Santiago_Region_Metropolitana_2020.xlsx
+- Datos_COVID_Chile_2020.xlsx 
+
+
+
+Citas
+Si se usa la función remedid.m se debería citar:
+García-García, D., I. Vigo, E. S. Fonfría, Z. Herrador, M. Navarro, and
+C. Bordehore. Retrospective Methodology to Estimate Daily Infections from
+Deaths (REMEDID) in COVID-19: the Spain case study. Scientific Reports, 
+11:11274, 2021. https://doi.org/10.1038/s41598-021-90051-7
+
+Si se usan el resto de funciones o los datos se debería citar García-García et al. (2021) y: 
+- Márquez, J., D. García-García, M. I. Vigo, and C. Bordehore!
+. Estimación retrospectiva de los casos iniciales de COVID-19 en Santiago Región Metropolitana en Chile. Gaceta Sanitaria. 2024. https://doi.org/10.1016/j.gaceta.2024.102357.

@@ -6,12 +6,15 @@
 % REMEDID: Retrospective Methodology to Estimate Daily Infections from 
 %          Deaths  
 %
+% In this version the probability density function (PDF) of the 
+% "Infection to death period" is an input.
+%
 % Written by 
 %                       David Garcia-Garcia
 %                       University of Alicante, Spain
 %                       d.garcia@ua.es
 %
-%                                                                June 2020
+%                                                                July 2023
 %-------------------------------------------------------------------------
 %-------------------------------------------------------------------------
 %-------------------------------------------------------------------------
@@ -32,18 +35,13 @@
 %
 % INPUTS:
 %   - deaths: time series of daily deaths. It must be a row or a column.
-%   - Incubation period (IP) distribution:
-%       - IP_distribution: 'Gamma', 'Lognormal', 'Normal', 'Weibull'
-%         (Matlab supports more distibution, but these are the most usual 
-%          for this study)
-%       - IP_parameter_1
-%       - IP_parameter_2
-%   - Illness onset to death (IOD)  distribution:
-%       - IOD_distribution: 'Gamma', 'Lognormal', 'Normal', 'Weibull'
-%         (Matlab supports more distibution, but these are the most usual 
-%          for this study)
-%       - IOD_parameter_1
-%       - IOD_parameter_2
+%
+%   - pdf: Probability Density Function (PDF) of the "Infection to death
+%             period". Each value represents a day. It must be a row or a 
+%             column.
+%
+%   - N_truncation: Days of the PDF used
+% 
 %   - min_percentage: Infections close to the end of the time series are 
 %                     inferred only with a percentage of their associated 
 %                     deaths. The infection time series is truncated in 
@@ -55,22 +53,6 @@
 %          CFR for each day) with the same dimensions than deaths.
 %   - plot_option: If plot_option=1, the probability distribution functions 
 %                  are plotted
-%
-% Parameters 1 and 2 are different for each distribution. See Matlab 
-% documentation for further details. In Matlab R2019b:
-% - Gamma: 
-%       - Parameter_1: Shape parameter
-%       - Parameter_2: Scale parameter
-% - Lognormal: 
-%       - Parameter_1: Mean of logarithmic values
-%       - Parameter_2: Standard deviation of logarithmic values
-% - Normal: 
-%       - Parameter_1: Mean 
-%       - Parameter_2: Standard deviation 
-% - Weibull: 
-%       - Parameter_1: Scale parameter
-%       - Parameter_2: Shape parameter
-%       
 %
 % OUTPUTS:
 %   - infections: time series of daily infections
@@ -87,121 +69,35 @@
 
 
 
-function [infections, Nmin, Nextra, infections_aux] = remedid(deaths, ...
-                              IP_distribution,  IP_parameter_1,  IP_parameter_2,...
-                              IOD_distribution, IOD_parameter_1, IOD_parameter_2, ...
-                              min_percentage, CFR,...
+function [infections, Nmin, Nextra, infections_aux] = remedid_pdf(deaths, ...
+                              pdf, N_truncation, min_percentage, CFR,...
                               plot_option)
 
 
                           
-
-%% ---------------------
-% Incubation Period (IP)
-%-----------------------
-
-% Probability Density Function (PDF)
-if strcmp('Gamma', IP_distribution)
-    pdf_IP = makedist('Gamma','a', IP_parameter_1, 'b', IP_parameter_2  );
-elseif strcmp('Lognormal', IP_distribution)
-    pdf_IP = makedist('Lognormal','mu', IP_parameter_1,'sigma', IP_parameter_2  );
-elseif strcmp('Normal', IP_distribution)
-    pdf_IP = makedist('Normal','mu', IP_parameter_1,'sigma', IP_parameter_2  );
-elseif strcmp('Weibull', IP_distribution)
-    pdf_IP = makedist('Weibull','a', IP_parameter_1,'b', IP_parameter_2  );
-else
-    error('Check the distribution of the Incubation Period')
-end
-
-% Numerical values of the PDF
-N=60;           %Days to evaluate the PDF. 60 is enough for COVID-19. You may like change it
-h_step = 0.1;   %Length of step 
-x_IP = 0:h_step:N;
-y_IP = pdf(pdf_IP,x_IP);
-
-
-
-%% --------------------------
-% Illnes Onset to Death (IOD)
-%----------------------------
-
-% Probability Density Function (PDF)
-if strcmp('Gamma', IOD_distribution)
-    pdf_IOD = makedist('Gamma','a', IOD_parameter_1, 'b', IOD_parameter_2  );
-elseif strcmp('Lognormal', IOD_distribution)
-    pdf_IOD = makedist('Lognormal','mu', IOD_parameter_1,'sigma', IOD_parameter_2  );
-elseif strcmp('Normal', IOD_distribution)
-    pdf_IOD = makedist('Normal','mu', IOD_parameter_1,'sigma', IOD_parameter_2  );
-elseif strcmp('Weibull', IOD_distribution)
-    pdf_IOD = makedist('Weibull','a', IOD_parameter_1,'b', IOD_parameter_2  );
-else
-    error('Check the distribution of the Illnes Onset to Death')
-end
-
-% Numerical values of the PDF
-x_IOD = 0:h_step:N;
-y_IOD = pdf(pdf_IOD,x_IOD);
-
-
-
-
-%% ---------------------------------------------------------
-% Convolution of pdf_IP and pdf_IOD: Infection to Death (ID)
-%-----------------------------------------------------------
-
-pdf_aux = zeros(length(x_IP), 2*length(x_IP)-1 )*NaN;
-
-for x=1:length(x_IOD)
-    
-    pdf_aux(x, x:x+length(x_IP)-1 ) = y_IP(x) * y_IOD * h_step;
-    
-end
-
-pdf_convolution = nansum(pdf_aux, 1);
-x_convolution = 0:h_step:2*N;
-
-
-% Daily version: Infection to Death (ID)
-x = 0:N;
-k=0;
-for i=1:1/h_step:length(pdf_convolution)-1
-    k=k+1;
-    pdf_convolution_daily(k) = mean(pdf_convolution(i:i+9));
-end
-
-pdf_ID = pdf_convolution_daily(1: length(x));
-
-
+N=N_truncation;     %Days to evaluate the PDF. 60 is enough for COVID-19. You may like change it
+pdf_ID = pdf(1:N);
 
 
 %% --------------
 % Plot (optional)
 % ---------------
 
-% It is plot only if plot_option==1
+% Only plotted if plot_option==1
 if plot_option==1
     
     figure('Renderer', 'painters', 'Position', [10 10 700 350])
     
     hold on, grid on
-    h_IP  = plot(x_IP,  y_IP,  'linewidth',2);
-    h_IOD = plot(x_IOD, y_IOD, 'linewidth',2);
-    h_convolution = plot(x_convolution, pdf_convolution,'linewidth',2);
+    h_convolution = plot(1:N, pdf_ID,'linewidth',2);
     
-    
-    legend([h_IP, h_IOD, h_convolution],...
-        ['Incubation period '],...
-        ['Illnes onset to death '],...
-        ['Infection to death '],...
-        'location', 'northeast') ;
-    
-    xlim([0,N])
+    xlim([0,N+1])
     xlabel('Days ','FontSize',15)
     
     aa = get(gca,'XTickLabel');
     set(gca,'XTickLabel',aa,'fontsize',13)
     
-    title('Probability Density Functions ', 'fontweight','bold','FontSize',25);
+    title('Probability Density Function ', 'fontweight','bold','FontSize',25);
     
 end
 
@@ -262,12 +158,13 @@ CFR_extended    = [ones(1, Nextra_aux)*CFR2(1), CFR2];
 Nextended = length(deaths_extended);
 infections_CFR100 = zeros(1, Nextended);
 
+
 for i=1:Nextended
     
     aux = deaths_extended(i:end);
     
-    if length(aux)>N+1
-        k = length(aux) - (N+1);
+    if length(aux)>N %+1
+        k = length(aux) - (N);  %+1);
         aux_pd = [pdf_ID, zeros(1,k)];
     else
         aux_pd = pdf_ID(1:length(aux));
